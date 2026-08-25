@@ -1,0 +1,30 @@
+name: Antigravity Cloud Wakeup
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-models:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install antigravity-usage CLI
+        run: npm install -g antigravity-usage
+
+      - name: Restore Auth Config
+        env:
+          AG_CONFIG: ${{ secrets.AG_CONFIG_JSON }}
+        run: |
+          mkdir -p ~/.config/antigravity-usage/
+          echo "$AG_CONFIG" > ~/.config/antigravity-usage/config.json
+
+      - name: Send Pings
+        run: |
+          antigravity-usage wakeup test -m claude-sonnet-4-5 -p "hi"
+          antigravity-usage wakeup test -m gemini-3-flash -p "hi"
