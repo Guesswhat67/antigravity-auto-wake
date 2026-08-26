@@ -48,6 +48,8 @@ jobs:
           }
           EOF
 
-      - name: Run Background Wakeup
+      - name: Send Pings
         run: |
-          antigravity-usage wakeup --yes
+          # Automatically answer the interactive prompts for both models
+          echo "opus-4-6" | antigravity-usage wakeup test -p "Please write a comprehensive 500-word essay about the history of the internet."
+          echo "gemini-3-7-flash" | antigravity-usage wakeup test -p "Please write a comprehensive 500-word essay about the history of the internet."
