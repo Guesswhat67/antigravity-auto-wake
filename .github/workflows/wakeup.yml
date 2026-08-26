@@ -14,42 +14,67 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
 
       - name: Install antigravity-usage CLI
         run: npm install -g antigravity-usage
 
-      - name: Restore Auth Config
+      - name: Restore Auth Config & Configure Latest Models
         env:
           AG_CONFIG: ${{ secrets.AG_CONFIG_JSON }}
         run: |
-          # 1. Create the account directory structure
-          mkdir -p ~/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/
-          
-          # 2. Extract and write tokens.json and metadata.json from the single secret
-          echo "$AG_CONFIG" | node -e '
+          node -e '
             const fs = require("fs");
-            const input = JSON.parse(fs.readFileSync(0, "utf-8"));
+            const path = require("path");
+            const os = require("os");
+
+            const home = os.homedir();
+            const email = "jamessafdar2111@gmail.com";
+            const configDir = path.join(home, ".config", "antigravity-usage");
+            const accountDir = path.join(configDir, "accounts", email);
+            const wakeupDir = path.join(configDir, "wakeup");
+
+            // 1. Create directories
+            fs.mkdirSync(accountDir, { recursive: true });
+            fs.mkdirSync(wakeupDir, { recursive: true });
+
+            // 2. Parse secrets and write auth tokens
+            const input = JSON.parse(process.env.AG_CONFIG);
             fs.writeFileSync(
-              "/home/runner/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/tokens.json", 
+              path.join(accountDir, "tokens.json"),
               JSON.stringify(input.tokens, null, 2)
             );
             fs.writeFileSync(
-              "/home/runner/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/metadata.json", 
+              path.join(accountDir, "metadata.json"),
               JSON.stringify(input.metadata, null, 2)
             );
-          '
-          
-          # 3. Tell the CLI which account is active
-          cat << 'EOF' > ~/.config/antigravity-usage/config.json
-          {
-            "version": "2.0",
-            "activeAccount": "jamessafdar2111@gmail.com"
-          }
-          EOF
+            fs.writeFileSync(
+              path.join(configDir, "config.json"),
+              JSON.stringify({ version: "2.0", activeAccount: email }, null, 2)
+            );
 
-      - name: Send Pings
+            // 3. Configure all latest Antigravity models + custom prompt
+            const wakeupConfig = {
+              enabled: true,
+              selectedModels: [
+                "claude-sonnet-4-5",
+                "gemini-3-flash",
+                "gemini-3-pro-low",
+                "gemini-2.5"
+              ],
+              selectedAccounts: [email],
+              customPrompt: "ping",
+              maxOutputTokens: 5,
+              scheduleMode: "interval",
+              intervalHours: 4.5
+            };
+
+            fs.writeFileSync(
+              path.join(wakeupDir, "config.json"),
+              JSON.stringify(wakeupConfig, null, 2)
+            );
+          '
+
+      - name: Run Background Wakeup on All Latest Models
         run: |
-          # Automatically answer the interactive prompts for both models
-          echo "opus-4-6" | antigravity-usage wakeup test -p "Please write a comprehensive 500-word essay about the history of the internet."
-          echo "gemini-3-7-flash" | antigravity-usage wakeup test -p "Please write a comprehensive 500-word essay about the history of the internet."
+          antigravity-usage wakeup trigger
