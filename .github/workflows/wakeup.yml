@@ -48,6 +48,6 @@ jobs:
           }
           EOF
 
-      - name: Send Pings
+      - name: Run Background Wakeup
         run: |
-          antigravity-usage wakeup test -p "Please write a comprehensive 500-word essay about the history of the internet."
+          antigravity-usage wakeup --yes
