@@ -2,7 +2,9 @@ name: Antigravity Cloud Wakeup
 
 on:
   schedule:
-    - cron: '0 */5 * * *'
+    # Runs precisely every 4.5 hours (alternating intervals)
+    - cron: '0 0,9,18 * * *'
+    - cron: '30 4,13,22 * * *'
   workflow_dispatch:
 
 jobs:
@@ -21,8 +23,30 @@ jobs:
         env:
           AG_CONFIG: ${{ secrets.AG_CONFIG_JSON }}
         run: |
-          mkdir -p ~/.config/antigravity-usage/
-          echo "$AG_CONFIG" > ~/.config/antigravity-usage/config.json
+          # 1. Create the account directory structure
+          mkdir -p ~/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/
+          
+          # 2. Extract and write tokens.json and metadata.json from the single secret
+          echo "$AG_CONFIG" | node -e '
+            const fs = require("fs");
+            const input = JSON.parse(fs.readFileSync(0, "utf-8"));
+            fs.writeFileSync(
+              "/home/runner/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/tokens.json", 
+              JSON.stringify(input.tokens, null, 2)
+            );
+            fs.writeFileSync(
+              "/home/runner/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/metadata.json", 
+              JSON.stringify(input.metadata, null, 2)
+            );
+          '
+          
+          # 3. Tell the CLI which account is active
+          cat << 'EOF' > ~/.config/antigravity-usage/config.json
+          {
+            "version": "2.0",
+            "activeAccount": "jamessafdar2111@gmail.com"
+          }
+          EOF
 
       - name: Send Pings
         run: |
