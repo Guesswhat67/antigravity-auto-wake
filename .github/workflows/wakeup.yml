@@ -50,5 +50,4 @@ jobs:
 
       - name: Send Pings
         run: |
-          antigravity-usage wakeup test -m claude-sonnet-4-5 -p "Please write a comprehensive 500-word essay about the history of the internet."
-          antigravity-usage wakeup test -m gemini-3-flash -p "Please write a comprehensive 500-word essay about the history of the internet."
+          antigravity-usage wakeup test -p "Please write a comprehensive 500-word essay about the history of the internet."
