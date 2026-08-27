@@ -38,6 +38,7 @@ jobs:
             fs.mkdirSync(wakeupDir, { recursive: true });
 
             const input = JSON.parse(process.env.AG_CONFIG);
+
             fs.writeFileSync(
               path.join(accountDir, "tokens.json"),
               JSON.stringify(input.tokens, null, 2)
@@ -56,20 +57,18 @@ jobs:
                 enabled: true,
                 selectedModels: ["claude-sonnet-4-5", "gemini-3-flash", "gemini-3-pro-low", "gemini-2.5"],
                 selectedAccounts: [email],
-                customPrompt: "ping",
-                maxOutputTokens: 5,
+                customPrompt: "Please write a comprehensive 500-word essay about the history of the internet.",
+                maxOutputTokens: 1000,
                 scheduleMode: "interval",
                 intervalHours: 4.5
               }, null, 2)
             );
           '
 
-      - name: Ping All Models (Non-Interactive)
+      - name: Run Model Wakeup
         run: |
           EMAIL="jamessafdar2111@gmail.com"
-          MODELS=("claude-sonnet-4-5" "gemini-3-flash" "gemini-3-pro-low" "gemini-2.5")
+          PROMPT="Please write a comprehensive 500-word essay about the history of the internet."
           
-          for MODEL in "${MODELS[@]}"; do
-            echo "🚀 Pinging $MODEL..."
-            antigravity-usage wakeup test -e "$EMAIL" -m "$MODEL" -p "ping" || true
-          done
+          # Pass both -e and -m with </dev/null so Inquirer is completely bypassed
+          antigravity-usage wakeup test -e "$EMAIL" -m "claude-sonnet-4-5" -p "$PROMPT" < /dev/null
