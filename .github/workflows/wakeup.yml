@@ -19,7 +19,7 @@ jobs:
       - name: Install antigravity-usage CLI
         run: npm install -g antigravity-usage
 
-      - name: Restore Auth Config & Configure Latest Models
+      - name: Restore Auth Config
         env:
           AG_CONFIG: ${{ secrets.AG_CONFIG_JSON }}
         run: |
@@ -34,11 +34,9 @@ jobs:
             const accountDir = path.join(configDir, "accounts", email);
             const wakeupDir = path.join(configDir, "wakeup");
 
-            // 1. Create directories
             fs.mkdirSync(accountDir, { recursive: true });
             fs.mkdirSync(wakeupDir, { recursive: true });
 
-            // 2. Parse secrets and write auth tokens
             const input = JSON.parse(process.env.AG_CONFIG);
             fs.writeFileSync(
               path.join(accountDir, "tokens.json"),
@@ -52,29 +50,26 @@ jobs:
               path.join(configDir, "config.json"),
               JSON.stringify({ version: "2.0", activeAccount: email }, null, 2)
             );
-
-            // 3. Configure all latest Antigravity models + custom prompt
-            const wakeupConfig = {
-              enabled: true,
-              selectedModels: [
-                "claude-sonnet-4-5",
-                "gemini-3-flash",
-                "gemini-3-pro-low",
-                "gemini-2.5"
-              ],
-              selectedAccounts: [email],
-              customPrompt: "ping",
-              maxOutputTokens: 5,
-              scheduleMode: "interval",
-              intervalHours: 4.5
-            };
-
             fs.writeFileSync(
               path.join(wakeupDir, "config.json"),
-              JSON.stringify(wakeupConfig, null, 2)
+              JSON.stringify({
+                enabled: true,
+                selectedModels: ["claude-sonnet-4-5", "gemini-3-flash", "gemini-3-pro-low", "gemini-2.5"],
+                selectedAccounts: [email],
+                customPrompt: "ping",
+                maxOutputTokens: 5,
+                scheduleMode: "interval",
+                intervalHours: 4.5
+              }, null, 2)
             );
           '
 
-      - name: Run Background Wakeup on All Latest Models
+      - name: Ping All Models (Non-Interactive)
         run: |
-          antigravity-usage wakeup trigger
+          EMAIL="jamessafdar2111@gmail.com"
+          MODELS=("claude-sonnet-4-5" "gemini-3-flash" "gemini-3-pro-low" "gemini-2.5")
+          
+          for MODEL in "${MODELS[@]}"; do
+            echo "🚀 Pinging $MODEL..."
+            antigravity-usage wakeup test -e "$EMAIL" -m "$MODEL" -p "ping" || true
+          done
