@@ -36,8 +36,18 @@ jobs:
           }
           EOF
 
-      - name: Run Headless Wakeup
-        env:
-          CI: true
+      - name: Run Auto-Wakeup
         run: |
-          antigravity-usage wakeup --yes || antigravity-usage quota --all
+          # 1. Refresh Google tokens
+          antigravity-usage quota --all
+          
+          # 2. Ping Claude
+          antigravity-usage wakeup test -m opus-4-6 -p "Please write a comprehensive 500-word essay about the history of the internet." || true
+          
+          # 3. Ping GPT
+          antigravity-usage wakeup test -m gpt-4-5 -p "Please write a comprehensive 500-word essay about the history of the internet." || true
+          
+          # 4. Ping Gemini (Using multiple versions to guarantee a hit)
+          antigravity-usage wakeup test -m gemini-3.7-flash -p "Please write a comprehensive 500-word essay about the history of the internet." || true
+          antigravity-usage wakeup test -m gemini-3-flash -p "Please write a comprehensive 500-word essay about the history of the internet." || true
+          antigravity-usage wakeup test -m gemini-2.5 -p "Please write a comprehensive 500-word essay about the history of the internet." || true
