@@ -2,7 +2,6 @@ name: Antigravity Cloud Wakeup
 
 on:
   schedule:
-    # Runs precisely every 4.5 hours (alternating intervals)
     - cron: '0 0,9,18 * * *'
     - cron: '30 4,13,22 * * *'
   workflow_dispatch:
@@ -19,7 +18,7 @@ jobs:
       - name: Install antigravity-usage CLI
         run: npm install -g antigravity-usage
 
-      - name: Restore Auth Config
+      - name: Restore Auth & Ping All Models
         env:
           AG_CONFIG: ${{ secrets.AG_CONFIG_JSON }}
         run: |
@@ -39,36 +38,38 @@ jobs:
 
             const input = JSON.parse(process.env.AG_CONFIG);
 
-            fs.writeFileSync(
-              path.join(accountDir, "tokens.json"),
-              JSON.stringify(input.tokens, null, 2)
-            );
-            fs.writeFileSync(
-              path.join(accountDir, "metadata.json"),
-              JSON.stringify(input.metadata, null, 2)
-            );
-            fs.writeFileSync(
-              path.join(configDir, "config.json"),
-              JSON.stringify({ version: "2.0", activeAccount: email }, null, 2)
-            );
-            fs.writeFileSync(
-              path.join(wakeupDir, "config.json"),
-              JSON.stringify({
-                enabled: true,
-                selectedModels: ["claude-sonnet-4-5", "gemini-3-flash", "gemini-3-pro-low", "gemini-2.5"],
-                selectedAccounts: [email],
-                customPrompt: "Please write a comprehensive 500-word essay about the history of the internet.",
-                maxOutputTokens: 1000,
-                scheduleMode: "interval",
-                intervalHours: 4.5
-              }, null, 2)
-            );
+            fs.writeFileSync(path.join(accountDir, "tokens.json"), JSON.stringify(input.tokens, null, 2));
+            fs.writeFileSync(path.join(accountDir, "metadata.json"), JSON.stringify(input.metadata, null, 2));
+            fs.writeFileSync(path.join(configDir, "config.json"), JSON.stringify({ version: "2.0", activeAccount: email }, null, 2));
+            fs.writeFileSync(path.join(wakeupDir, "config.json"), JSON.stringify({
+              enabled: true,
+              selectedModels: ["claude-sonnet-4-5", "gemini-3-flash", "gemini-3-pro-low", "gemini-2.5"],
+              selectedAccounts: [email],
+              customPrompt: "Please write a comprehensive 500-word essay about the history of the internet.",
+              maxOutputTokens: 1000,
+              scheduleMode: "interval",
+              intervalHours: 4.5
+            }, null, 2));
+
+            console.log("✅ Auth config restored.");
           '
 
-      - name: Run Model Wakeup
+      - name: Ping Models (No Interactive Prompts)
+        shell: bash
         run: |
           EMAIL="jamessafdar2111@gmail.com"
           PROMPT="Please write a comprehensive 500-word essay about the history of the internet."
-          
-          # Pass both -e and -m with </dev/null so Inquirer is completely bypassed
-          antigravity-usage wakeup test -e "$EMAIL" -m "claude-sonnet-4-5" -p "$PROMPT" < /dev/null
+          MODELS=("claude-sonnet-4-5" "gemini-3-flash" "gemini-3-pro-low" "gemini-2.5")
+
+          for MODEL in "${MODELS[@]}"; do
+            echo ""
+            echo "🚀 Pinging $MODEL..."
+            echo "y" | antigravity-usage wakeup test \
+              -e "$EMAIL" \
+              -m "$MODEL" \
+              -p "$PROMPT" \
+              </dev/null 2>&1 || echo "⚠️ $MODEL ping completed with non-zero exit (may still have succeeded)"
+          done
+
+          echo ""
+          echo "✅ All model pings complete."
