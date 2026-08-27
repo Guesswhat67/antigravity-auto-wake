@@ -15,64 +15,29 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Execute Background Wakeup
+      - name: Install antigravity-usage CLI
+        run: npm install -g antigravity-usage
+
+      - name: Restore Auth Config
         env:
           AG_CONFIG: ${{ secrets.AG_CONFIG_JSON }}
         run: |
-          node -e '
-            const https = require("https");
-
-            async function wakeup() {
-              try {
-                const input = JSON.parse(process.env.AG_CONFIG);
-                const accessToken = input.tokens.accessToken;
-                const projectId = input.tokens.projectId || "rapid-epigram-4jcsn";
-
-                console.log("🚀 Sending background ping to keep quota fresh...");
-
-                const data = JSON.stringify({
-                  contents: [{
-                    parts: [{ text: "Please write a comprehensive 500-word essay about the history of the internet." }]
-                  }]
-                });
-
-                const options = {
-                  hostname: "us-central1-aiplatform.googleapis.com",
-                  path: `/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`,
-                  method: "POST",
-                  headers: {
-                    "Authorization": `Bearer ${accessToken}`,
-                    "Content-Type": "application/json",
-                    "Content-Length": Buffer.byteLength(data)
-                  }
-                };
-
-                await new Promise((resolve) => {
-                  const req = https.request(options, (res) => {
-                    let body = "";
-                    res.on("data", (chunk) => body += chunk);
-                    res.on("end", () => {
-                      if (res.statusCode === 200) {
-                        console.log("✅ Successfully pinged model! Quota window refreshed.");
-                      } else {
-                        console.log(`ℹ️ Status code received: ${res.statusCode}. Quota contact made.`);
-                      }
-                      resolve();
-                    });
-                  });
-
-                  req.on("error", (err) => {
-                    console.log("ℹ️ Network handshake completed.");
-                    resolve();
-                  });
-
-                  req.write(data);
-                  req.end();
-                });
-              } catch (e) {
-                console.log("✅ Background execution finished successfully.");
-              }
-            }
-
-            wakeup();
+          mkdir -p ~/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/
+          echo "$AG_CONFIG" | node -e '
+            const fs = require("fs");
+            const input = JSON.parse(fs.readFileSync(0, "utf-8"));
+            fs.writeFileSync("/home/runner/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/tokens.json", JSON.stringify(input.tokens, null, 2));
+            fs.writeFileSync("/home/runner/.config/antigravity-usage/accounts/jamessafdar2111@gmail.com/metadata.json", JSON.stringify(input.metadata, null, 2));
           '
+          cat << 'EOF' > ~/.config/antigravity-usage/config.json
+          {
+            "version": "2.0",
+            "activeAccount": "jamessafdar2111@gmail.com"
+          }
+          EOF
+
+      - name: Run Headless Wakeup
+        env:
+          CI: true
+        run: |
+          antigravity-usage wakeup --yes || antigravity-usage quota --all
